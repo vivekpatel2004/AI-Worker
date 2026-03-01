@@ -9,7 +9,8 @@ app = FastAPI(title="AI Worker Productivity Dashboard")
 origins = [
     "http://localhost:5174",
     "http://127.0.0.1:5174",
-    "https://ai-worker-ten.vercel.app",   # 👈 your Vercel frontend
+    "https://ai-worker-ten.vercel.app",
+    "https://ai-worker-six.vercel.app",   
 ]
 
 app.add_middleware(
