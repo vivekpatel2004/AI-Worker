@@ -6,7 +6,7 @@ const Dashboard = () => {
   const [stations, setStations] = useState([]);
   const [factory, setFactory] = useState(null);
   const [selectedWorker, setSelectedWorker] = useState("All");
-  const [minConfidence, setMinConfidence] = useState(0.0);
+  const [minConfidence, setMinConfidence] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -18,14 +18,15 @@ const Dashboard = () => {
       setLoading(true);
 
       const workerRes = await api.get(
-        `/metrics/workers?min_confidence=${minConfidence}`
+        `/metrics/workers?min_confidence=${Number(minConfidence)}`
       );
+
       const stationRes = await api.get("/metrics/workstations");
       const factoryRes = await api.get("/metrics/factory");
 
-      setWorkers(workerRes.data);
-      setStations(stationRes.data);
-      setFactory(factoryRes.data);
+      setWorkers(workerRes.data || []);
+      setStations(stationRes.data || []);
+      setFactory(factoryRes.data || null);
     } catch (error) {
       console.error("Error fetching metrics:", error);
     } finally {
@@ -34,8 +35,15 @@ const Dashboard = () => {
   };
 
   const seedDatabase = async () => {
-    await api.post("/seed/data");
-    fetchData();
+    try {
+      setLoading(true);
+      await api.post("/seed/data");
+      await fetchData(); // refresh data after seeding
+    } catch (error) {
+      console.error("Error seeding database:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredWorkers =
@@ -86,13 +94,13 @@ const Dashboard = () => {
             min="0"
             max="1"
             value={minConfidence}
-            onChange={(e) => setMinConfidence(e.target.value)}
+            onChange={(e) => setMinConfidence(Number(e.target.value))}
             className="mt-1 p-2 border rounded"
           />
         </div>
       </div>
 
-      {loading && <p>Loading...</p>}
+      {loading && <p className="mb-4">Loading...</p>}
 
       {/* Factory Summary */}
       {factory && (
@@ -135,16 +143,24 @@ const Dashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredWorkers.map((w) => (
-              <tr key={w.worker_id} className="border-t hover:bg-gray-50">
-                <td className="p-3 font-medium">{w.worker_id}</td>
-                <td className="p-3">{w.active_minutes}</td>
-                <td className="p-3">{w.idle_minutes}</td>
-                <td className="p-3">{w.utilization_percent}%</td>
-                <td className="p-3">{w.total_units}</td>
-                <td className="p-3">{w.units_per_hour}</td>
+            {filteredWorkers.length > 0 ? (
+              filteredWorkers.map((w) => (
+                <tr key={w.worker_id} className="border-t hover:bg-gray-50">
+                  <td className="p-3 font-medium">{w.worker_id}</td>
+                  <td className="p-3">{w.active_minutes}</td>
+                  <td className="p-3">{w.idle_minutes}</td>
+                  <td className="p-3">{w.utilization_percent}%</td>
+                  <td className="p-3">{w.total_units}</td>
+                  <td className="p-3">{w.units_per_hour}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="p-4 text-center text-gray-500">
+                  No worker data available
+                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -162,14 +178,22 @@ const Dashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {stations.map((s) => (
-              <tr key={s.station_id} className="border-t hover:bg-gray-50">
-                <td className="p-3 font-medium">{s.station_id}</td>
-                <td className="p-3">{s.occupancy_minutes}</td>
-                <td className="p-3">{s.total_units}</td>
-                <td className="p-3">{s.throughput_per_hour}</td>
+            {stations.length > 0 ? (
+              stations.map((s) => (
+                <tr key={s.station_id} className="border-t hover:bg-gray-50">
+                  <td className="p-3 font-medium">{s.station_id}</td>
+                  <td className="p-3">{s.occupancy_minutes}</td>
+                  <td className="p-3">{s.total_units}</td>
+                  <td className="p-3">{s.throughput_per_hour}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="p-4 text-center text-gray-500">
+                  No workstation data available
+                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
